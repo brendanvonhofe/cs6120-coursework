@@ -48,19 +48,14 @@ fn control_flow_graph(blocks: &Vec<Vec<&JsonValue>>) -> Option<HashMap<String, V
     for i in 0..blocks.len() - 1 {
         let b = &blocks[i];
         let last = b[b.len() - 1];
-        if last["op"].as_str()? == "jmp" {
+        if last["op"].as_str()? == "jmp" || last["op"].as_str()? == "br" {
             cfg.insert(
                 block_name(b, i)?,
-                vec![String::from(last["labels"].members().next()?.as_str()?)],
-            );
-        } else if last["op"].as_str()? == "br" {
-            let mut labels = last["labels"].members();
-            cfg.insert(
-                block_name(b, i)?,
-                vec![
-                    String::from(labels.next()?.as_str()?),
-                    String::from(labels.next()?.as_str()?),
-                ],
+                Vec::from_iter(
+                    last["labels"]
+                        .members()
+                        .map(|x| -> String { String::from(x.as_str().unwrap()) }),
+                ),
             );
         } else {
             cfg.insert(block_name(b, i)?, vec![block_name(&blocks[i + 1], i)?]);
