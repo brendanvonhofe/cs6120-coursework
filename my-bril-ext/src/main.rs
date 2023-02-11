@@ -88,11 +88,18 @@ fn main() {
             eprintln!("Problem parsing program");
             process::exit(1);
         });
-        println!("BLOCKS");
-        for block in blocks.iter() {
-            println!("{:?}\n", block);
+
+        println!("digraph {} {{", func["name"].as_str().unwrap());
+        let cfg = control_flow_graph(&blocks).unwrap();
+        for key in cfg.keys() {
+            println!("  {};", key);
         }
-        println!("-----\n");
-        println!("CFG\n{:?}\n---\n", control_flow_graph(&blocks).unwrap());
+        for key in cfg.keys() {
+            for succ in cfg[key].iter() {
+                println!("  {key} -> {succ};");
+            }
+        }
+        println!("}}");
+        break;
     }
 }
