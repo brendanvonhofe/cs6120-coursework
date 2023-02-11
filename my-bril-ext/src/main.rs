@@ -2,73 +2,76 @@ use json;
 use json::JsonValue;
 use std::collections::HashMap;
 use std::error::Error;
-use std::fmt;
 use std::io;
 use std::io::Read;
 use std::process;
 
 const TERMINATORS: [&str; 3] = ["jmp", "br", "ret"];
 
-struct BasicBlock<'a> {
-    name: String,
-    instrs: Vec<&'a JsonValue>,
-    len: usize,
-}
-
-impl<'a> fmt::Debug for BasicBlock<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}\n", self.name)?;
-        for instr in self.instrs.iter() {
-            write!(f, "  {}", instr)?;
-        }
-        Ok(())
-    }
-}
-
-fn finalize_block(label: Option<String>, instrs: Vec<&JsonValue>, id: u32) -> BasicBlock {
-    let name;
-    match label {
-        Some(s) => name = s.clone(),
-        None => name = format!("block_{}", id),
-    };
-    return BasicBlock {
-        name: name,
-        len: instrs.len(),
-        instrs: instrs,
-    };
-}
-
-fn basic_blocks(func: &JsonValue) -> Option<Vec<BasicBlock>> {
-    let mut blocks: Vec<BasicBlock> = vec![];
+fn basic_blocks(func: &JsonValue) -> Option<Vec<Vec<&JsonValue>>> {
+    let mut blocks: Vec<Vec<&JsonValue>> = vec![];
     let mut block: Vec<&JsonValue> = vec![];
-    let mut cur_label: Option<String> = Option::None;
-    let mut idx = 0;
 
     for op in func["instrs"].members() {
         if op.has_key("op") {
             block.push(op);
             if TERMINATORS.contains(&op["op"].as_str()?) {
-                blocks.push(finalize_block(cur_label, block.clone(), idx));
-                cur_label = None;
-                idx += 1;
-            } else {
-                continue;
+                blocks.push(block.clone());
+                block.clear();
             }
         } else if op.has_key("label") {
             if !block.is_empty() {
-                blocks.push(finalize_block(cur_label, block.clone(), idx));
-                idx += 1;
+                blocks.push(block.clone());
+                block.clear();
             }
-            cur_label = Some(String::from(op["label"].as_str()?));
+            block.push(op);
         }
-        block.clear();
     }
 
     if !block.is_empty() {
-        blocks.push(finalize_block(cur_label, block.clone(), idx));
+        blocks.push(block.clone());
     }
 
     return Some(blocks);
+}
+
+fn block_name(block: &Vec<&JsonValue>, i: usize) -> Option<String> {
+    if block[0].has_key("label") {
+        return Some(String::from(block[0]["label"].as_str()?));
+    }
+    Some(String::from(format!("block_{}", i)))
+}
+
+fn control_flow_graph(blocks: &Vec<Vec<&JsonValue>>) -> Option<HashMap<String, Vec<String>>> {
+    let mut cfg: HashMap<String, Vec<String>> = HashMap::new();
+
+    for i in 0..blocks.len() - 1 {
+        let b = &blocks[i];
+        let last = b[b.len() - 1];
+        if last["op"].as_str()? == "jmp" {
+            cfg.insert(
+                block_name(b, i)?,
+                vec![String::from(last["labels"].members().next()?.as_str()?)],
+            );
+        } else if last["op"].as_str()? == "br" {
+            let mut labels = last["labels"].members();
+            cfg.insert(
+                block_name(b, i)?,
+                vec![
+                    String::from(labels.next()?.as_str()?),
+                    String::from(labels.next()?.as_str()?),
+                ],
+            );
+        } else {
+            cfg.insert(block_name(b, i)?, vec![block_name(&blocks[i + 1], i)?]);
+        }
+    }
+    cfg.insert(
+        block_name(&blocks[blocks.len() - 1], blocks.len() - 1)?,
+        vec![],
+    );
+
+    return Some(cfg);
 }
 
 fn parse() -> Result<JsonValue, Box<dyn Error>> {
@@ -77,31 +80,6 @@ fn parse() -> Result<JsonValue, Box<dyn Error>> {
     stdin.read_to_string(&mut contents)?;
     let program = json::parse(&contents)?;
     return Ok(program);
-}
-
-fn control_flow_graph<'a>(
-    blocks: &'a Vec<BasicBlock<'a>>,
-) -> Option<HashMap<&'a str, Vec<&'a str>>> {
-    let mut cfg: HashMap<&str, Vec<&str>> = HashMap::new();
-
-    for i in 0..blocks.len() - 1 {
-        let b = &blocks[i];
-        let last = b.instrs[b.len - 1];
-        if last["op"].as_str()? == "jmp" {
-            cfg.insert(&b.name, vec![last["labels"].members().next()?.as_str()?]);
-        } else if last["op"].as_str()? == "br" {
-            let mut labels = last["labels"].members();
-            cfg.insert(
-                &b.name,
-                vec![labels.next()?.as_str()?, labels.next()?.as_str()?],
-            );
-        } else {
-            cfg.insert(&b.name, vec![&blocks[i + 1].name]);
-        }
-    }
-    cfg.insert(&blocks[blocks.len() - 1].name, vec![]);
-
-    return Some(cfg);
 }
 
 fn main() {
