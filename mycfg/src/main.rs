@@ -299,24 +299,22 @@ struct BlockGen {
 
 impl BlockGen {
     fn finalize_block(&mut self) {
-        self.blocks.push(BasicBlock {
-            name: if self.name.is_empty() {
-                format!("b{}", self.blocks.len())
-            } else {
-                self.name.clone()
-            },
-            instructions: self.instructions.clone(),
-        });
-        self.instructions.clear();
-        self.name.clear()
+        if !self.instructions.is_empty() {
+            self.blocks.push(BasicBlock {
+                name: if self.name.is_empty() {
+                    format!("b{}", self.blocks.len())
+                } else {
+                    self.name.clone()
+                },
+                instructions: self.instructions.clone(),
+            });
+            self.instructions.clear();
+            self.name.clear()
+        }
     }
 
     fn push_instruction(&mut self, instr: Instruction) {
         self.instructions.push(instr);
-    }
-
-    fn cur_block_empty(&mut self) -> bool {
-        self.instructions.is_empty()
     }
 
     fn set_cur_name(&mut self, name: String) {
@@ -343,16 +341,11 @@ fn parse_basic_blocks(json: &JsonValue) -> Vec<BasicBlock> {
                 block_gen.finalize_block();
             }
         } else if op.has_key("label") {
-            if !block_gen.cur_block_empty() {
-                block_gen.finalize_block();
-            }
+            block_gen.finalize_block();
             block_gen.set_cur_name(String::from(op["label"].as_str().unwrap()));
         }
     }
-
-    if !block_gen.cur_block_empty() {
-        block_gen.finalize_block();
-    }
+    block_gen.finalize_block();
 
     block_gen.yield_blocks()
 }
