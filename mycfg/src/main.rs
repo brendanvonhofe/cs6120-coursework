@@ -86,6 +86,7 @@ struct Instruction {
     value: Option<Value>,
 }
 
+#[derive(Clone)]
 struct BasicBlock {
     name: String,
     instructions: Vec<Instruction>,
@@ -290,55 +291,70 @@ fn parse_instruction(json: &JsonValue) -> Instruction {
     }
 }
 
+struct BlockGen {
+    blocks: Vec<BasicBlock>,
+    instructions: Vec<Instruction>,
+    name: String,
+}
+
+impl BlockGen {
+    fn finalize_block(&mut self) {
+        self.blocks.push(BasicBlock {
+            name: if self.name.is_empty() {
+                format!("b{}", self.blocks.len())
+            } else {
+                self.name.clone()
+            },
+            instructions: self.instructions.clone(),
+        });
+        self.instructions.clear();
+        self.name.clear()
+    }
+
+    fn push_instruction(&mut self, instr: Instruction) {
+        self.instructions.push(instr);
+    }
+
+    fn cur_block_empty(&mut self) -> bool {
+        self.instructions.is_empty()
+    }
+
+    fn set_cur_name(&mut self, name: String) {
+        self.name = name;
+    }
+
+    fn yield_blocks(&self) -> Vec<BasicBlock> {
+        self.blocks.clone()
+    }
+}
+
 fn parse_basic_blocks(json: &JsonValue) -> Vec<BasicBlock> {
-    let mut blocks: Vec<BasicBlock> = vec![];
-    let mut instructions: Vec<Instruction> = vec![];
-    let mut name: String = String::new();
+    let mut block_gen: BlockGen = BlockGen {
+        blocks: vec![],
+        instructions: vec![],
+        name: String::new(),
+    };
 
     for op in json.members() {
         if op.has_key("op") {
             let instr: Instruction = parse_instruction(&op);
+            block_gen.push_instruction(instr.clone());
             if is_terminator(&instr) {
-                instructions.push(instr);
-                if name.is_empty() {
-                    name = format!("b{}", blocks.len());
-                }
-                blocks.push(BasicBlock {
-                    name: name.clone(),
-                    instructions: instructions.clone(),
-                });
-                instructions.clear();
-                name.clear()
-            } else {
-                instructions.push(instr);
+                block_gen.finalize_block();
             }
         } else if op.has_key("label") {
-            if !instructions.is_empty() {
-                if name.is_empty() {
-                    name = format!("b{}", blocks.len());
-                }
-                blocks.push(BasicBlock {
-                    name: name.clone(),
-                    instructions: instructions.clone(),
-                });
-                instructions.clear();
-                name.clear()
+            if !block_gen.cur_block_empty() {
+                block_gen.finalize_block();
             }
-            name = String::from(op["label"].as_str().unwrap());
+            block_gen.set_cur_name(String::from(op["label"].as_str().unwrap()));
         }
     }
 
-    if !instructions.is_empty() {
-        if name.is_empty() {
-            name = format!("b{}", blocks.len());
-        }
-        blocks.push(BasicBlock {
-            name: name,
-            instructions: instructions.clone(),
-        });
+    if !block_gen.cur_block_empty() {
+        block_gen.finalize_block();
     }
 
-    blocks
+    block_gen.yield_blocks()
 }
 
 fn parse_function(json: &JsonValue) -> Function {
