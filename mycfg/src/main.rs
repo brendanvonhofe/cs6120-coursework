@@ -192,16 +192,19 @@ fn is_terminator(instr: &Instruction) -> bool {
 }
 
 fn parse_function_args(json: &JsonValue) -> Vec<(String, Type)> {
-    let mut args: Vec<(String, Type)> = vec![];
     if json.has_key("args") {
-        for arg in json["args"].members() {
-            args.push((
-                String::from(arg["name"].as_str().unwrap()),
-                parse_type(&arg["type"]),
-            ))
-        }
+        json["args"]
+            .members()
+            .map(|arg| -> (String, Type) {
+                (
+                    String::from(arg["name"].as_str().unwrap()),
+                    parse_type(&arg["type"]),
+                )
+            })
+            .collect()
+    } else {
+        vec![]
     }
-    args
 }
 
 fn parse_type(json: &JsonValue) -> Type {
@@ -243,50 +246,47 @@ fn parse_op_code(json: &JsonValue) -> OpCode {
 }
 
 fn parse_json_str_arr(json: &JsonValue) -> Vec<String> {
-    let mut string_array: Vec<String> = vec![];
-    for member in json.members() {
-        string_array.push(String::from(member.as_str().unwrap()));
-    }
-    string_array
+    json.members()
+        .map(|member| -> String { String::from(member.as_str().unwrap()) })
+        .collect()
 }
 
 fn parse_instruction(json: &JsonValue) -> Instruction {
-    let op: OpCode = parse_op_code(&json["op"]);
-    let mut dst: Option<String> = None;
-    let mut dst_type: Option<Type> = None;
-    let mut args: Option<Vec<String>> = None;
-    let mut funcs: Option<Vec<String>> = None;
-    let mut labels: Option<Vec<String>> = None;
-    let mut value: Option<Value> = None;
-    if json.has_key("dst") {
-        dst = Some(String::from(json["dest"].as_str().unwrap()));
-    }
-    if json.has_key("type") {
-        dst_type = Some(parse_type(&json["type"]));
-    }
-    if json.has_key("args") {
-        args = Some(parse_json_str_arr(&json["args"]));
-    }
-    if json.has_key("funcs") {
-        funcs = Some(parse_json_str_arr(&json["funcs"]));
-    }
-    if json.has_key("labels") {
-        labels = Some(parse_json_str_arr(&json["labels"]));
-    }
-    if json.has_key("value") {
-        match dst_type.as_ref().unwrap() {
-            Type::Bool => value = Some(Value::Bool(json["value"].as_bool().unwrap())),
-            Type::Int => value = Some(Value::Int(json["value"].as_isize().unwrap())),
-        }
-    }
     Instruction {
-        op,
-        dst,
-        dst_type,
-        args,
-        funcs,
-        labels,
-        value,
+        op: parse_op_code(&json["op"]),
+        dst: if json.has_key("dest") {
+            Some(String::from(json["dest"].as_str().unwrap()))
+        } else {
+            None
+        },
+        dst_type: if json.has_key("type") {
+            Some(parse_type(&json["type"]))
+        } else {
+            None
+        },
+        args: if json.has_key("args") {
+            Some(parse_json_str_arr(&json["args"]))
+        } else {
+            None
+        },
+        funcs: if json.has_key("funcs") {
+            Some(parse_json_str_arr(&json["funcs"]))
+        } else {
+            None
+        },
+        labels: if json.has_key("labels") {
+            Some(parse_json_str_arr(&json["labels"]))
+        } else {
+            None
+        },
+        value: if json.has_key("value") {
+            match json["value"].is_boolean() {
+                true => Some(Value::Bool(json["value"].as_bool().unwrap())),
+                false => Some(Value::Int(json["value"].as_isize().unwrap())),
+            }
+        } else {
+            None
+        },
     }
 }
 
@@ -342,27 +342,30 @@ fn parse_basic_blocks(json: &JsonValue) -> Vec<BasicBlock> {
 }
 
 fn parse_function(json: &JsonValue) -> Function {
-    let mut ret_type: Option<Type> = None;
-    if json.has_key("type") {
-        ret_type = Some(parse_type(&json["type"]));
-    }
     Function {
         name: String::from(json["name"].as_str().unwrap()),
         args: parse_function_args(&json),
-        ret_type: ret_type,
+        ret_type: if json.has_key("type") {
+            Some(parse_type(&json["type"]))
+        } else {
+            None
+        },
         blocks: parse_basic_blocks(&json["instrs"]),
     }
 }
 
 fn parse_program(json: &JsonValue) -> Program {
-    let mut functions: HashMap<String, Function> = HashMap::new();
-    for func in json["functions"].members() {
-        functions.insert(
-            String::from(func["name"].as_str().unwrap()),
-            parse_function(func),
-        );
+    Program {
+        functions: json["functions"]
+            .members()
+            .map(|func| -> (String, Function) {
+                (
+                    String::from(func["name"].as_str().unwrap()),
+                    parse_function(func),
+                )
+            })
+            .collect(),
     }
-    Program { functions }
 }
 
 fn parse_stdin() -> Result<JsonValue, Box<dyn Error>> {
