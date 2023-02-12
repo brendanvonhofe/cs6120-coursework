@@ -184,14 +184,6 @@ impl fmt::Display for Instruction {
 //     return Some(cfg);
 // }
 
-fn is_terminator(instr: &Instruction) -> bool {
-    if TERMINATORS.contains(&instr.op) {
-        true
-    } else {
-        false
-    }
-}
-
 fn parse_function_args(json: &JsonValue) -> Vec<(String, Type)> {
     if json.has_key("args") {
         json["args"]
@@ -337,7 +329,7 @@ fn parse_basic_blocks(json: &JsonValue) -> Vec<BasicBlock> {
         if op.has_key("op") {
             let instr: Instruction = parse_instruction(&op);
             block_gen.push_instruction(instr.clone());
-            if is_terminator(&instr) {
+            if TERMINATORS.contains(&instr.op) {
                 block_gen.finalize_block();
             }
         } else if op.has_key("label") {
