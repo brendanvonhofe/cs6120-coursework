@@ -1,6 +1,5 @@
 use json;
 use json::JsonValue;
-use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
 use std::io;
@@ -26,7 +25,7 @@ enum Value {
 }
 
 #[derive(Clone, PartialEq, Debug)]
-enum ArithmeticOp {
+pub enum ArithmeticOp {
     Add,
     Sub,
     Mul,
@@ -34,7 +33,7 @@ enum ArithmeticOp {
 }
 
 #[derive(Clone, PartialEq, Debug)]
-enum ComparisonOp {
+pub enum ComparisonOp {
     Eq,
     Lt,
     Gt,
@@ -43,14 +42,14 @@ enum ComparisonOp {
 }
 
 #[derive(Clone, PartialEq, Debug)]
-enum LogicOp {
+pub enum LogicOp {
     Not,
     And,
     Or,
 }
 
 #[derive(Clone, PartialEq, Debug)]
-enum ControlOp {
+pub enum ControlOp {
     Jmp,
     Br,
     Call,
@@ -58,14 +57,14 @@ enum ControlOp {
 }
 
 #[derive(Clone, PartialEq, Debug)]
-enum MiscOp {
+pub enum MiscOp {
     Id,
     Print,
     Nop,
 }
 
 #[derive(Clone, PartialEq, Debug)]
-enum OpCode {
+pub enum OpCode {
     Const,
     Arithmetic(ArithmeticOp),
     Comparison(ComparisonOp),
@@ -75,37 +74,37 @@ enum OpCode {
 }
 
 #[derive(Clone)]
-struct Instruction {
-    op: OpCode,
+pub struct Instruction {
+    pub op: OpCode,
     dst: Option<String>,
     dst_type: Option<Type>,
     args: Option<Vec<String>>,
     funcs: Option<Vec<String>>,
-    labels: Option<Vec<String>>,
+    pub labels: Option<Vec<String>>,
     value: Option<Value>,
 }
 
 #[derive(Clone)]
-struct BasicBlock {
-    name: String,
-    instructions: Vec<Instruction>,
+pub struct BasicBlock {
+    pub name: String,
+    pub instructions: Vec<Instruction>,
 }
 
-struct Function {
-    name: String,
+pub struct Function {
+    pub name: String,
     args: Vec<(String, Type)>,
     ret_type: Option<Type>,
-    blocks: Vec<BasicBlock>,
+    pub blocks: Vec<BasicBlock>,
 }
 
 pub struct Program {
-    functions: HashMap<String, Function>,
+    pub functions: Vec<Function>,
 }
 
 impl fmt::Display for Program {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for (i, function) in self.functions.keys().enumerate() {
-            write!(f, "{}", self.functions[function])?;
+        for (i, function) in self.functions.iter().enumerate() {
+            write!(f, "{}", function)?;
             if i != self.functions.len() - 1 {
                 write!(f, "\n")?;
             }
@@ -331,12 +330,7 @@ pub fn parse_program(json: &JsonValue) -> Program {
     Program {
         functions: json["functions"]
             .members()
-            .map(|func| -> (String, Function) {
-                (
-                    String::from(func["name"].as_str().unwrap()),
-                    parse_function(func),
-                )
-            })
+            .map(|func| -> Function { parse_function(func) })
             .collect(),
     }
 }
