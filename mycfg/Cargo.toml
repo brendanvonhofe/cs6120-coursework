@@ -7,3 +7,15 @@ edition = "2021"
 
 [dependencies]
 json = "0.12.4"
+
+[lib]
+name = "frontend"
+path = "src/frontend.rs"
+
+[[bin]]
+name = "debug"
+path = "src/bin/debug.rs"
+
+[[bin]]
+name = "cfg"
+path = "src/bin/cfg.rs"
