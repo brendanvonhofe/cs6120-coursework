@@ -1,6 +1,7 @@
 use std::fmt;
 
-use crate::core::{BasicBlock, Function, Instruction, Program, Type};
+use crate::core::OpCode::*;
+use crate::core::{BasicBlock, ControlOp, Function, Instruction, LogicOp, MiscOp, Program, Type};
 
 impl fmt::Display for Program {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -51,7 +52,105 @@ impl fmt::Display for BasicBlock {
 
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.op)?;
+        match &self.op {
+            Const => {
+                write!(
+                    f,
+                    "{}: {:?} = const {:?};",
+                    self.dst.as_ref().unwrap(),
+                    self.dst_type.as_ref().unwrap(),
+                    self.value.as_ref().unwrap()
+                )?;
+            }
+            Arithmetic(aop) => {
+                write!(
+                    f,
+                    "{}: {:?} = {:?} {} {};",
+                    self.dst.as_ref().unwrap(),
+                    self.dst_type.as_ref().unwrap(),
+                    aop,
+                    self.args.as_ref().unwrap()[0],
+                    self.args.as_ref().unwrap()[1]
+                )?;
+            }
+            Comparison(compop) => {
+                write!(
+                    f,
+                    "{}: {:?} = {:?} {} {};",
+                    self.dst.as_ref().unwrap(),
+                    self.dst_type.as_ref().unwrap(),
+                    compop,
+                    self.args.as_ref().unwrap()[0],
+                    self.args.as_ref().unwrap()[1]
+                )?;
+            }
+            Logic(lop) => match lop {
+                LogicOp::Not => {
+                    write!(
+                        f,
+                        "{}: {:?} = {:?} {};",
+                        self.dst.as_ref().unwrap(),
+                        self.dst_type.as_ref().unwrap(),
+                        lop,
+                        self.args.as_ref().unwrap()[0],
+                    )?;
+                }
+                _ => {
+                    write!(
+                        f,
+                        "{}: {:?} = {:?} {} {};",
+                        self.dst.as_ref().unwrap(),
+                        self.dst_type.as_ref().unwrap(),
+                        lop,
+                        self.args.as_ref().unwrap()[0],
+                        self.args.as_ref().unwrap()[1]
+                    )?;
+                }
+            },
+            Control(cop) => match cop {
+                ControlOp::Jmp => {
+                    write!(f, "jmp .{};", self.labels.as_ref().unwrap()[0])?;
+                }
+                ControlOp::Br => {
+                    write!(
+                        f,
+                        "br {} .{} .{};",
+                        self.args.as_ref().unwrap()[0],
+                        self.labels.as_ref().unwrap()[0],
+                        self.labels.as_ref().unwrap()[1]
+                    )?;
+                }
+                ControlOp::Call => {
+                    if let Some(dst) = &self.dst {
+                        write!(f, "{}: {:?} = ", dst, self.dst_type.as_ref().unwrap())?;
+                    }
+                    write!(
+                        f,
+                        "call @{} {}",
+                        self.funcs.as_ref().unwrap()[0],
+                        self.args.as_ref().unwrap().join(" ")
+                    )?;
+                }
+                ControlOp::Ret => {
+                    if let Some(args) = &self.args {
+                        write!(f, "ret {};", args[0])?;
+                    } else {
+                        write!(f, "ret;")?;
+                    }
+                }
+            },
+            Misc(mop) => match &mop {
+                MiscOp::Id => {
+                    write!(f, "Id {}", self.args.as_ref().unwrap()[0])?;
+                }
+                MiscOp::Print => {
+                    write!(f, "Print {}", self.args.as_ref().unwrap().join(" "))?;
+                }
+                MiscOp::Nop => {
+                    write!(f, "Nop")?;
+                }
+            },
+        }
         Ok(())
     }
 }
