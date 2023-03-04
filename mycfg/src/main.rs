@@ -5,7 +5,6 @@ use std::io;
 use std::io::Read;
 use std::process;
 
-use mycfg::core;
 use mycfg::parser;
 
 const DEBUG_FILE: &str = "/Users/brendan/Desktop/cs6120/mycfg/tests/fib2seven.json";
@@ -22,25 +21,6 @@ fn parse_file(filename: &str) -> Result<JsonValue, Box<dyn Error>> {
     let contents = String::from(fs::read_to_string(filename)?);
     let program = json::parse(&contents)?;
     return Ok(program);
-}
-
-fn print_graphviz(prog: core::Program) {
-    for func in prog.functions.iter() {
-        println!("digraph {} {{", func.name);
-        let cfg = parser::control_flow_graph(func);
-        let mut sorted_keys: Vec<&String> = cfg.keys().collect();
-        sorted_keys.sort();
-        for &key in &sorted_keys {
-            println!("  {};", key);
-        }
-        for &key in &sorted_keys {
-            for succ in cfg[key].iter() {
-                println!("  {key} -> {succ};");
-            }
-        }
-        println!("}}");
-        break;
-    }
 }
 
 fn main() {
@@ -60,7 +40,7 @@ fn main() {
                 eprintln!("Problem parsing stdin: {}", err);
                 process::exit(1);
             });
-            print_graphviz(parser::parse_program(&json));
+            parser::parse_program(&json).print_graphviz();
         }
         "opt" => {
             let json = parse_stdin().unwrap_or_else(|err| {

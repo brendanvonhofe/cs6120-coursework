@@ -5,6 +5,7 @@ use crate::core::Value::*;
 use crate::core::{
     BasicBlock, ControlOp, Function, Instruction, LogicOp, MiscOp, Program, Type, Value,
 };
+use crate::parser::control_flow_graph;
 
 impl fmt::Display for Program {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -186,5 +187,26 @@ impl fmt::Display for Value {
             }
         }
         Ok(())
+    }
+}
+
+impl Program {
+    pub fn print_graphviz(&self) {
+        for func in self.functions.iter() {
+            println!("digraph {} {{", func.name);
+            let cfg = control_flow_graph(func);
+            let mut sorted_keys: Vec<&String> = cfg.keys().collect();
+            sorted_keys.sort();
+            for &key in &sorted_keys {
+                println!("  {};", key);
+            }
+            for &key in &sorted_keys {
+                for succ in cfg[key].iter() {
+                    println!("  {key} -> {succ};");
+                }
+            }
+            println!("}}");
+            break;
+        }
     }
 }
