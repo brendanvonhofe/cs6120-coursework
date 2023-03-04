@@ -1,7 +1,10 @@
 use std::fmt;
 
 use crate::core::OpCode::*;
-use crate::core::{BasicBlock, ControlOp, Function, Instruction, LogicOp, MiscOp, Program, Type};
+use crate::core::Value::*;
+use crate::core::{
+    BasicBlock, ControlOp, Function, Instruction, LogicOp, MiscOp, Program, Type, Value,
+};
 
 impl fmt::Display for Program {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -42,7 +45,7 @@ impl fmt::Display for Function {
 
 impl fmt::Display for BasicBlock {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, ".{}\n", self.name)?;
+        write!(f, ".{}:\n", self.name)?;
         for instr in self.instructions.iter() {
             write!(f, "    {}\n", instr)?;
         }
@@ -56,9 +59,10 @@ impl fmt::Display for Instruction {
             Const => {
                 write!(
                     f,
-                    "{}: {:?} = const {:?};",
+                    "{}: {:?} = {:?} {};",
                     self.dst.as_ref().unwrap(),
                     self.dst_type.as_ref().unwrap(),
+                    Const,
                     self.value.as_ref().unwrap()
                 )?;
             }
@@ -109,12 +113,18 @@ impl fmt::Display for Instruction {
             },
             Control(cop) => match cop {
                 ControlOp::Jmp => {
-                    write!(f, "jmp .{};", self.labels.as_ref().unwrap()[0])?;
+                    write!(
+                        f,
+                        "{:?} .{};",
+                        ControlOp::Jmp,
+                        self.labels.as_ref().unwrap()[0]
+                    )?;
                 }
                 ControlOp::Br => {
                     write!(
                         f,
-                        "br {} .{} .{};",
+                        "{:?} {} .{} .{};",
+                        ControlOp::Br,
                         self.args.as_ref().unwrap()[0],
                         self.labels.as_ref().unwrap()[0],
                         self.labels.as_ref().unwrap()[1]
@@ -126,7 +136,8 @@ impl fmt::Display for Instruction {
                     }
                     write!(
                         f,
-                        "call @{} {}",
+                        "{:?} @{} {};",
+                        ControlOp::Call,
                         self.funcs.as_ref().unwrap()[0],
                         self.args.as_ref().unwrap().join(" ")
                     )?;
@@ -141,15 +152,38 @@ impl fmt::Display for Instruction {
             },
             Misc(mop) => match &mop {
                 MiscOp::Id => {
-                    write!(f, "Id {}", self.args.as_ref().unwrap()[0])?;
+                    write!(f, "{:?} {};", MiscOp::Id, self.args.as_ref().unwrap()[0])?;
                 }
                 MiscOp::Print => {
-                    write!(f, "Print {}", self.args.as_ref().unwrap().join(" "))?;
+                    write!(
+                        f,
+                        "{:?} {};",
+                        MiscOp::Print,
+                        self.args.as_ref().unwrap().join(" ")
+                    )?;
                 }
                 MiscOp::Nop => {
-                    write!(f, "Nop")?;
+                    write!(f, "{:?};", MiscOp::Nop)?;
                 }
             },
+        }
+        Ok(())
+    }
+}
+
+impl fmt::Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Int(int) => {
+                write!(f, "{}", int)?;
+            }
+            Bool(bool) => {
+                if *bool {
+                    write!(f, "true")?;
+                } else {
+                    write!(f, "false")?;
+                }
+            }
         }
         Ok(())
     }
