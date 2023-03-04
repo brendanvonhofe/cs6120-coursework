@@ -1,159 +1,22 @@
 use json;
 use json::JsonValue;
-use std::error::Error;
-use std::fmt;
-use std::io;
-use std::io::Read;
+use std::collections::HashMap;
 use std::vec;
+
+mod blockgen;
+
+use crate::parser::blockgen::BlockGen;
+
+use crate::core::{
+    ArithmeticOp, BasicBlock, ComparisonOp, ControlOp, Function, Instruction, LogicOp, MiscOp,
+    OpCode, Program, Type, Value,
+};
 
 const TERMINATORS: [OpCode; 3] = [
     OpCode::Control(ControlOp::Jmp),
     OpCode::Control(ControlOp::Br),
     OpCode::Control(ControlOp::Ret),
 ];
-
-#[derive(Clone, Debug)]
-enum Type {
-    Int,
-    Bool,
-}
-
-#[derive(Clone, Debug)]
-enum Value {
-    Int(isize),
-    Bool(bool),
-}
-
-#[derive(Clone, PartialEq, Debug)]
-pub enum ArithmeticOp {
-    Add,
-    Sub,
-    Mul,
-    Div,
-}
-
-#[derive(Clone, PartialEq, Debug)]
-pub enum ComparisonOp {
-    Eq,
-    Lt,
-    Gt,
-    Le,
-    Ge,
-}
-
-#[derive(Clone, PartialEq, Debug)]
-pub enum LogicOp {
-    Not,
-    And,
-    Or,
-}
-
-#[derive(Clone, PartialEq, Debug)]
-pub enum ControlOp {
-    Jmp,
-    Br,
-    Call,
-    Ret,
-}
-
-#[derive(Clone, PartialEq, Debug)]
-pub enum MiscOp {
-    Id,
-    Print,
-    Nop,
-}
-
-#[derive(Clone, PartialEq, Debug)]
-pub enum OpCode {
-    Const,
-    Arithmetic(ArithmeticOp),
-    Comparison(ComparisonOp),
-    Logic(LogicOp),
-    Control(ControlOp),
-    Misc(MiscOp),
-}
-
-#[derive(Clone)]
-pub struct Instruction {
-    pub op: OpCode,
-    dst: Option<String>,
-    dst_type: Option<Type>,
-    args: Option<Vec<String>>,
-    funcs: Option<Vec<String>>,
-    pub labels: Option<Vec<String>>,
-    value: Option<Value>,
-}
-
-#[derive(Clone)]
-pub struct BasicBlock {
-    pub name: String,
-    pub instructions: Vec<Instruction>,
-}
-
-pub struct Function {
-    pub name: String,
-    args: Vec<(String, Type)>,
-    ret_type: Option<Type>,
-    pub blocks: Vec<BasicBlock>,
-}
-
-pub struct Program {
-    pub functions: Vec<Function>,
-}
-
-impl fmt::Display for Program {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for (i, function) in self.functions.iter().enumerate() {
-            write!(f, "{}", function)?;
-            if i != self.functions.len() - 1 {
-                write!(f, "\n")?;
-            }
-        }
-        Ok(())
-    }
-}
-
-impl fmt::Display for Function {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut ret_str = "void";
-        if let Some(ret_type) = &self.ret_type {
-            match ret_type {
-                Type::Int => ret_str = "Int",
-                Type::Bool => ret_str = "Bool",
-            }
-        }
-        write!(f, "@{}(", self.name)?;
-        for (i, (arg_name, arg_type)) in self.args.iter().enumerate() {
-            write!(f, "{}: {:?}", arg_name, arg_type)?;
-            if i != self.args.len() - 1 {
-                write!(f, ",")?;
-            }
-        }
-        write!(f, "): {} {{\n", ret_str)?;
-        for block in self.blocks.iter() {
-            write!(f, "{}", block)?;
-        }
-        write!(f, "}}\n")?;
-        Ok(())
-    }
-}
-
-impl fmt::Display for BasicBlock {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, ".{}\n", self.name)?;
-        for instr in self.instructions.iter() {
-            write!(f, "    {}\n", instr)?;
-        }
-        Ok(())
-    }
-}
-
-impl fmt::Display for Instruction {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.op)?;
-        Ok(())
-    }
-}
 
 fn parse_function_args(json: &JsonValue) -> Vec<(String, Type)> {
     if json.has_key("args") {
@@ -254,41 +117,6 @@ fn parse_instruction(json: &JsonValue) -> Instruction {
     }
 }
 
-struct BlockGen {
-    blocks: Vec<BasicBlock>,
-    instructions: Vec<Instruction>,
-    name: String,
-}
-
-impl BlockGen {
-    fn finalize_block(&mut self) {
-        if !self.instructions.is_empty() {
-            self.blocks.push(BasicBlock {
-                name: if self.name.is_empty() {
-                    format!("b{}", self.blocks.len())
-                } else {
-                    self.name.clone()
-                },
-                instructions: self.instructions.clone(),
-            });
-            self.instructions.clear();
-            self.name.clear()
-        }
-    }
-
-    fn push_instruction(&mut self, instr: Instruction) {
-        self.instructions.push(instr);
-    }
-
-    fn set_cur_name(&mut self, name: String) {
-        self.name = name;
-    }
-
-    fn yield_blocks(&self) -> Vec<BasicBlock> {
-        self.blocks.clone()
-    }
-}
-
 fn parse_basic_blocks(json: &JsonValue) -> Vec<BasicBlock> {
     let mut block_gen: BlockGen = BlockGen {
         blocks: vec![],
@@ -335,10 +163,19 @@ pub fn parse_program(json: &JsonValue) -> Program {
     }
 }
 
-pub fn parse_stdin() -> Result<JsonValue, Box<dyn Error>> {
-    let mut contents = String::new();
-    let mut stdin = io::stdin();
-    stdin.read_to_string(&mut contents)?;
-    let program = json::parse(&contents)?;
-    return Ok(program);
+pub fn control_flow_graph(func: &Function) -> HashMap<String, Vec<String>> {
+    let mut cfg: HashMap<String, Vec<String>> = HashMap::new();
+
+    for i in 0..func.blocks.len() - 1 {
+        let block = &func.blocks[i];
+        let last = &block.instructions[block.instructions.len() - 1];
+        if last.op == OpCode::Control(ControlOp::Jmp) || last.op == OpCode::Control(ControlOp::Br) {
+            cfg.insert(block.name.clone(), last.labels.as_ref().unwrap().clone());
+        } else {
+            cfg.insert(block.name.clone(), vec![func.blocks[i + 1].name.clone()]);
+        }
+    }
+    cfg.insert(func.blocks[func.blocks.len() - 1].name.clone(), vec![]);
+
+    return cfg;
 }
