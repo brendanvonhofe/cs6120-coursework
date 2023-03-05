@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::core::{BasicBlock, Function};
 
 impl Function {
@@ -50,5 +52,29 @@ impl Function {
             last = func;
         }
         return last;
+    }
+}
+
+impl BasicBlock {
+    pub fn dead_store_elim(&self) -> BasicBlock {
+        let mut block = self.clone();
+        let mut unused_vars: HashMap<&String, usize> = HashMap::new();
+
+        for (i, instr) in self.instructions.iter().enumerate() {
+            if let Some(args) = &instr.args {
+                for var in args.iter() {
+                    if unused_vars.contains_key(&var) {
+                        unused_vars.remove(var);
+                    }
+                }
+            }
+            if let Some(dst) = &instr.dst {
+                if unused_vars.contains_key(dst) {
+                    block.instructions.remove(unused_vars[dst]);
+                }
+                unused_vars.insert(dst, i);
+            }
+        }
+        return block;
     }
 }

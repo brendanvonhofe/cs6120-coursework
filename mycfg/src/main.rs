@@ -42,7 +42,7 @@ fn main() {
             });
             println!("{}", parser::parse_program(&json).graphviz().unwrap());
         }
-        "opt" => {
+        "dve" => {
             let json = parse_stdin().unwrap_or_else(|err| {
                 eprintln!("Problem parsing stdin: {}", err);
                 process::exit(1);
@@ -53,6 +53,21 @@ fn main() {
                 prog.functions[i] = prog.functions[i].dead_variable_elim();
             }
             println!("[AFTER] {}", prog);
+        }
+        "dse" => {
+            let json = parse_stdin().unwrap_or_else(|err| {
+                eprintln!("Problem parsing stdin: {}", err);
+                process::exit(1);
+            });
+            for func in parser::parse_program(&json).functions.iter() {
+                for block in func.blocks.iter() {
+                    println!(
+                        "[Before Dead Store Elim]\n{}\n[After]\n{}",
+                        block,
+                        block.dead_store_elim()
+                    );
+                }
+            }
         }
         _ => {
             println!("[DEBUG MODE] Reading program from {}\n", DEBUG_FILE);
