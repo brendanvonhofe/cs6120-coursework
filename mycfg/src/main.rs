@@ -8,6 +8,7 @@ use std::process;
 use mycfg::parser;
 
 const DEBUG_FILE: &str = "/Users/brendan/Desktop/cs6120/mycfg/tests/fib2seven.json";
+const NORMAL_MODES: [&str; 3] = ["main", "cfg", "opt"];
 
 fn parse_stdin() -> Result<JsonValue, Box<dyn Error>> {
     let mut contents = String::new();
@@ -26,55 +27,41 @@ fn parse_file(filename: &str) -> Result<JsonValue, Box<dyn Error>> {
 fn main() {
     let mut args = std::env::args();
     args.next();
-    let mode = args.next().unwrap_or(String::from("dbg"));
-    match mode.to_lowercase().as_str() {
+    let mode = args.next().unwrap_or(String::from("dbg")).to_lowercase();
+
+    let json: JsonValue;
+    if NORMAL_MODES.contains(&mode.as_str()) {
+        json = parse_stdin().unwrap_or_else(|err| {
+            eprintln!("Problem parsing stdin: {}", err);
+            process::exit(1);
+        });
+    } else {
+        json = parse_file(DEBUG_FILE).unwrap_or_else(|err| {
+            eprintln!("Problem parsing file {}: {}", DEBUG_FILE, err);
+            process::exit(1);
+        });
+    }
+
+    match mode.as_str() {
         "main" => {
-            let json = parse_stdin().unwrap_or_else(|err| {
-                eprintln!("Problem parsing stdin: {}", err);
-                process::exit(1);
-            });
             print!("{}", parser::parse_program(&json));
         }
         "cfg" => {
-            let json = parse_stdin().unwrap_or_else(|err| {
-                eprintln!("Problem parsing stdin: {}", err);
-                process::exit(1);
-            });
             println!("{}", parser::parse_program(&json).graphviz().unwrap());
         }
-        "dve" => {
-            let json = parse_stdin().unwrap_or_else(|err| {
-                eprintln!("Problem parsing stdin: {}", err);
-                process::exit(1);
-            });
+        "opt" => {
             let mut prog = parser::parse_program(&json);
-            println!("[BEFORE DEAD VARIABLE ELIM] {}", &prog);
+            println!("[BEFORE OPTIMIZATIONS] {}", &prog);
             for i in 0..prog.functions.len() {
                 prog.functions[i] = prog.functions[i].dead_variable_elim();
+                for j in 0..prog.functions[i].blocks.len() {
+                    prog.functions[i].blocks[j] = prog.functions[i].blocks[j].dead_store_elim();
+                }
             }
             println!("[AFTER] {}", prog);
         }
-        "dse" => {
-            let json = parse_stdin().unwrap_or_else(|err| {
-                eprintln!("Problem parsing stdin: {}", err);
-                process::exit(1);
-            });
-            for func in parser::parse_program(&json).functions.iter() {
-                for block in func.blocks.iter() {
-                    println!(
-                        "[Before Dead Store Elim]\n{}\n[After]\n{}",
-                        block,
-                        block.dead_store_elim()
-                    );
-                }
-            }
-        }
         _ => {
             println!("[DEBUG MODE] Reading program from {}\n", DEBUG_FILE);
-            let json = parse_file(DEBUG_FILE).unwrap_or_else(|err| {
-                eprintln!("Problem parsing file {}: {}", DEBUG_FILE, err);
-                process::exit(1);
-            });
             print!("{}", parser::parse_program(&json));
         }
     }
