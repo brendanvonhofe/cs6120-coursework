@@ -1,12 +1,12 @@
 mod display;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Type {
     Int,
     Bool,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Value {
     Int(isize),
     Bool(bool),
@@ -61,7 +61,7 @@ pub enum OpCode {
     Misc(MiscOp),
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct Instruction {
     pub op: OpCode,
     pub dst: Option<String>,
@@ -72,12 +72,13 @@ pub struct Instruction {
     pub value: Option<Value>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct BasicBlock {
     pub name: String,
     pub instructions: Vec<Instruction>,
 }
 
+#[derive(PartialEq, Clone)]
 pub struct Function {
     pub name: String,
     pub args: Vec<(String, Type)>,

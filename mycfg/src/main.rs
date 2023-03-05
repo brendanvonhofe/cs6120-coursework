@@ -40,7 +40,7 @@ fn main() {
                 eprintln!("Problem parsing stdin: {}", err);
                 process::exit(1);
             });
-            parser::parse_program(&json).print_graphviz();
+            println!("{}", parser::parse_program(&json).graphviz().unwrap());
         }
         "opt" => {
             let json = parse_stdin().unwrap_or_else(|err| {

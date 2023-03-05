@@ -1,4 +1,6 @@
+use std::error::Error;
 use std::fmt;
+use std::fmt::Write;
 
 use crate::core::OpCode::*;
 use crate::core::Value::*;
@@ -191,22 +193,24 @@ impl fmt::Display for Value {
 }
 
 impl Program {
-    pub fn print_graphviz(&self) {
+    pub fn graphviz(&self) -> Result<String, Box<dyn Error>> {
+        let mut s = String::new();
         for func in self.functions.iter() {
-            println!("digraph {} {{", func.name);
+            write!(s, "digraph {} {{\n", func.name)?;
             let cfg = control_flow_graph(func);
             let mut sorted_keys: Vec<&String> = cfg.keys().collect();
             sorted_keys.sort();
             for &key in &sorted_keys {
-                println!("  {};", key);
+                write!(s, "  {};\n", key)?;
             }
             for &key in &sorted_keys {
                 for succ in cfg[key].iter() {
-                    println!("  {key} -> {succ};");
+                    write!(s, "  {key} -> {succ};\n")?;
                 }
             }
-            println!("}}");
+            write!(s, "}}")?;
             break;
         }
+        return Ok(s);
     }
 }
