@@ -1,9 +1,10 @@
-use json::JsonValue;
 use std::error::Error;
 use std::fs;
 use std::io;
 use std::io::Read;
 use std::process;
+
+use json::JsonValue;
 
 use mycfg::parser;
 

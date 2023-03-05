@@ -1,16 +1,16 @@
-use json;
-use json::JsonValue;
+mod blockgen;
+
 use std::collections::HashMap;
 use std::vec;
 
-mod blockgen;
-
-use crate::parser::blockgen::BlockGen;
+use json;
+use json::JsonValue;
 
 use crate::core::{
     ArithmeticOp, BasicBlock, ComparisonOp, ControlOp, Function, Instruction, LogicOp, MiscOp,
     OpCode, Program, Type, Value,
 };
+use crate::parser::blockgen::BlockGen;
 
 const TERMINATORS: [OpCode; 3] = [
     OpCode::Control(ControlOp::Jmp),
