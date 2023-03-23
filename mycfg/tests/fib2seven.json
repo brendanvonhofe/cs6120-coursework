@@ -1,0 +1,179 @@
+{
+  "functions": [
+    {
+      "args": [
+        {
+          "name": "x",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "label": "zerocase"
+        },
+        {
+          "dest": "out",
+          "op": "const",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "dest": "zero",
+          "op": "const",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "args": [
+            "x",
+            "zero"
+          ],
+          "dest": "iszero",
+          "op": "eq",
+          "type": "bool"
+        },
+        {
+          "args": [
+            "iszero"
+          ],
+          "labels": [
+            "ret",
+            "onecase"
+          ],
+          "op": "br"
+        },
+        {
+          "label": "onecase"
+        },
+        {
+          "dest": "out",
+          "op": "const",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "dest": "one",
+          "op": "const",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "args": [
+            "x",
+            "one"
+          ],
+          "dest": "isone",
+          "op": "eq",
+          "type": "bool"
+        },
+        {
+          "args": [
+            "isone"
+          ],
+          "labels": [
+            "ret",
+            "body"
+          ],
+          "op": "br"
+        },
+        {
+          "label": "body"
+        },
+        {
+          "dest": "two",
+          "op": "const",
+          "type": "int",
+          "value": 2
+        },
+        {
+          "args": [
+            "x",
+            "one"
+          ],
+          "dest": "xmone",
+          "op": "sub",
+          "type": "int"
+        },
+        {
+          "args": [
+            "x",
+            "two"
+          ],
+          "dest": "xmtwo",
+          "op": "sub",
+          "type": "int"
+        },
+        {
+          "args": [
+            "xmone"
+          ],
+          "dest": "fibone",
+          "funcs": [
+            "fib"
+          ],
+          "op": "call",
+          "type": "int"
+        },
+        {
+          "args": [
+            "xmtwo"
+          ],
+          "dest": "fibtwo",
+          "funcs": [
+            "fib"
+          ],
+          "op": "call",
+          "type": "int"
+        },
+        {
+          "args": [
+            "fibone",
+            "fibtwo"
+          ],
+          "dest": "out",
+          "op": "add",
+          "type": "int"
+        },
+        {
+          "label": "ret"
+        },
+        {
+          "args": [
+            "out"
+          ],
+          "op": "ret"
+        }
+      ],
+      "name": "fib",
+      "type": "int"
+    },
+    {
+      "instrs": [
+        {
+          "dest": "five",
+          "op": "const",
+          "type": "int",
+          "value": 7
+        },
+        {
+          "args": [
+            "five"
+          ],
+          "dest": "fibfive",
+          "funcs": [
+            "fib"
+          ],
+          "op": "call",
+          "type": "int"
+        },
+        {
+          "args": [
+            "fibfive"
+          ],
+          "op": "print"
+        }
+      ],
+      "name": "main"
+    }
+  ]
+}
