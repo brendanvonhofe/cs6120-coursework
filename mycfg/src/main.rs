@@ -54,10 +54,12 @@ fn main() {
             let mut prog = parser::parse_program(&json);
             println!("[BEFORE OPTIMIZATIONS] {}", &prog);
             for i in 0..prog.functions.len() {
-                prog.functions[i] = prog.functions[i].dead_variable_elim();
                 for j in 0..prog.functions[i].blocks.len() {
+                    // prog.functions[i].blocks[j] =
+                    // prog.functions[i].blocks[j].local_value_numbering();
                     prog.functions[i].blocks[j] = prog.functions[i].blocks[j].dead_store_elim();
                 }
+                prog.functions[i] = prog.functions[i].dead_variable_elim();
             }
             println!("[AFTER] {}", prog);
         }

@@ -198,8 +198,11 @@ impl Program {
         for func in self.functions.iter() {
             write!(s, "digraph {} {{\n", func.name)?;
             let cfg = control_flow_graph(func);
+
+            // Sort to make output deterministic
             let mut sorted_keys: Vec<&String> = cfg.keys().collect();
             sorted_keys.sort();
+
             for &key in &sorted_keys {
                 write!(s, "  {};\n", key)?;
             }

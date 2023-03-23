@@ -12,7 +12,7 @@ pub enum Value {
     Bool(bool),
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Hash, Eq)]
 pub enum ArithmeticOp {
     Add,
     Sub,
@@ -20,7 +20,7 @@ pub enum ArithmeticOp {
     Div,
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Hash, Eq)]
 pub enum ComparisonOp {
     Eq,
     Lt,
@@ -29,14 +29,14 @@ pub enum ComparisonOp {
     Ge,
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Hash, Eq)]
 pub enum LogicOp {
     Not,
     And,
     Or,
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Hash, Eq)]
 pub enum ControlOp {
     Jmp,
     Br,
@@ -44,14 +44,14 @@ pub enum ControlOp {
     Ret,
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Hash, Eq)]
 pub enum MiscOp {
     Id,
     Print,
     Nop,
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Hash, Eq)]
 pub enum OpCode {
     Const,
     Arithmetic(ArithmeticOp),
